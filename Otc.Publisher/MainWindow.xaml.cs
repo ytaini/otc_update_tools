@@ -25,7 +25,7 @@ public partial class MainWindow : Window
         AppendLog(
             restored
                 ? $"已恢复上次保存的发布配置：{PublisherSettingsStore.SettingsPath}"
-                : "已载入当前项目的推荐默认值，请确认私钥和数据库口令后再发布。");
+                : "已载入通用默认值，请选择产品和待发布目录后再发布。");
         Loaded += OnLoaded;
     }
 
@@ -41,7 +41,7 @@ public partial class MainWindow : Window
 
     private void ApplyDefaults()
     {
-        var workspaceRoot = FindWorkspaceRoot() ?? AppContext.BaseDirectory;
+        var workspaceRoot = Directory.GetCurrentDirectory();
         var defaultProductCode = Environment.GetEnvironmentVariable("OTC_PUBLISHER_PRODUCT")?.Trim()
             ?? string.Empty;
         var defaultProductType = Environment.GetEnvironmentVariable("OTC_PUBLISHER_TYPE")?.Trim()
@@ -62,7 +62,7 @@ public partial class MainWindow : Window
         SourceDirectoryBox.Text = Path.Combine(publishRoot, "app");
         UpdaterDirectoryBox.Text = Path.Combine(publishRoot, "updater");
         ShareDirectoryBox.Text = DefaultShareDirectory;
-        PrivateKeyBox.Text = Path.Combine(workspaceRoot, "Keys", "update-private.pem");
+        PrivateKeyBox.Text = string.Empty;
         HostBox.Text = "127.0.0.1";
         PortBox.Text = "5432";
         DatabaseBox.Text = "otcc";
@@ -371,23 +371,6 @@ public partial class MainWindow : Window
         }
 
         comboBox.Text = value;
-    }
-
-    private static string? FindWorkspaceRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-
-        while (directory is not null)
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "Otc.Publisher", "Otc.Publisher.csproj")))
-            {
-                return directory.Parent?.FullName;
-            }
-
-            directory = directory.Parent;
-        }
-
-        return null;
     }
 
     /// <inheritdoc />
