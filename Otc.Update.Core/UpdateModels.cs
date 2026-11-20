@@ -201,6 +201,15 @@ public sealed class UpdateLaunchOptions
 
     /// <summary>更新健康标记与结果文件根目录。</summary>
     public string UpdateRoot { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 更新器界面语言代码（zh-CN / en-US / ko-KR）。
+    /// </summary>
+    /// <remarks>
+    /// 由主程序在启动更新器时带入，使更新窗口与主程序保持同一语言；
+    /// 留空时更新器按系统界面语言显示。
+    /// </remarks>
+    public string Language { get; set; } = string.Empty;
 }
 
 /// <summary>更新执行结果。</summary>

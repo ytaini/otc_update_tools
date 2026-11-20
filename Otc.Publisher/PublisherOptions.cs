@@ -41,6 +41,14 @@ public sealed class PublisherOptions
 
     /// <summary>发布说明。</summary>
     public string Remark { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 界面语言代码（zh-CN / en-US / ko-KR）。
+    /// </summary>
+    /// <remarks>
+    /// 只用于命令行模式与首启默认值；图形界面里由页头语言下拉框直接切换。
+    /// </remarks>
+    public string Language { get; set; } = string.Empty;
 }
 
 /// <summary>发布结果。</summary>

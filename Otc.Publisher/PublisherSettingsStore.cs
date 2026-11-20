@@ -72,6 +72,20 @@ internal static class PublisherSettingsStore
         "Otc.Publisher",
         "publisher-settings.json");
 
+    /// <summary>
+    /// 语言偏好文件路径。
+    /// </summary>
+    /// <remarks>
+    /// 语言偏好单独存放，不与发布配置写同一个文件：
+    /// 用户只切换语言时不必触碰发布配置，也不会因为语言文件先于配置存在
+    /// 而把发布表单恢复成空值。
+    /// </remarks>
+    internal static string LanguageSettingsPath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "OTC",
+        "Otc.Publisher",
+        "publisher-language.json");
+
     /// <summary>读取本机配置；不存在或损坏时返回 null。</summary>
     internal static PublisherSettings? Load()
     {
@@ -138,6 +152,66 @@ internal static class PublisherSettingsStore
             JsonSerializer.Serialize(
                 settings,
                 new JsonSerializerOptions { WriteIndented = true }));
+    }
+
+    /// <summary>
+    /// 读取本机保存的语言偏好。
+    /// </summary>
+    /// <returns>语言代码；未保存或损坏时返回 null。</returns>
+    internal static string? LoadLanguage()
+    {
+        try
+        {
+            if (!File.Exists(LanguageSettingsPath))
+            {
+                return null;
+            }
+
+            var language = JsonSerializer.Deserialize<Dictionary<string, string>>(
+                File.ReadAllText(LanguageSettingsPath));
+
+            if (language is null
+                || !language.TryGetValue("language", out var value)
+                || string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            return value;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 保存本机语言偏好。
+    /// </summary>
+    /// <param name="language">语言代码。</param>
+    internal static void SaveLanguage(string language)
+    {
+        if (string.IsNullOrWhiteSpace(language))
+        {
+            return;
+        }
+
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(LanguageSettingsPath)!);
+            File.WriteAllText(
+                LanguageSettingsPath,
+                JsonSerializer.Serialize(
+                    new Dictionary<string, string> { ["language"] = language },
+                    new JsonSerializerOptions { WriteIndented = true }));
+        }
+        catch (IOException)
+        {
+            // 语言偏好不是关键数据，写入失败不影响本次语言切换。
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
     }
 
     /// <summary>解密本机保存的数据库口令。</summary>

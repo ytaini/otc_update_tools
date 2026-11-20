@@ -1,3 +1,4 @@
+using Otc.Update.Core.Localization;
 using System.Windows;
 
 namespace Otc.Updater;
@@ -27,8 +28,25 @@ public partial class App : Application
             StartupError = ex.Message;
         }
 
+        // 主程序会把当前界面语言带进来；未携带时按系统界面语言显示。
+        ApplyLanguage(LaunchOptions?.Language);
+
         var window = new MainWindow(LaunchOptions, StartupError);
         MainWindow = window;
         window.Show();
+    }
+
+    /// <summary>
+    /// 应用界面语言。
+    /// </summary>
+    /// <param name="language">语言代码，可为空。</param>
+    private static void ApplyLanguage(string? language)
+    {
+        if (string.IsNullOrWhiteSpace(language))
+        {
+            return;
+        }
+
+        LocalizationService.Instance.SetLanguage(language);
     }
 }

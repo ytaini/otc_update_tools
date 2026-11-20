@@ -21,6 +21,39 @@
         <CornerRadius x:Key="ControlCornerRadius">3</CornerRadius>
         <CornerRadius x:Key="CircleCornerRadius">999</CornerRadius>
 
+        <Style x:Key="HeaderComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Padding" Value="9,0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Background" Value="#22FFFFFF" />
+            <Setter Property="BorderBrush" Value="#44FFFFFF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <!--
+              页头在深色背景上，闭合状态的文字必须是白色；
+              但展开的列表项默认继承 ComboBox 的白色前景色，在浅色弹出层上会看不清。
+              这里显式给列表项设定深色前景与不透明背景，保证下拉列表可读。
+            -->
+            <Setter Property="ItemContainerStyle">
+                <Setter.Value>
+                    <Style TargetType="ComboBoxItem">
+                        <Setter Property="Foreground" Value="#172033" />
+                        <Setter Property="Background" Value="White" />
+                        <Setter Property="Padding" Value="10,6" />
+                        <Setter Property="FontWeight" Value="Normal" />
+                        <Style.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter Property="Background" Value="#E8F0FF" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="CardStyle" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource CardBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}" />

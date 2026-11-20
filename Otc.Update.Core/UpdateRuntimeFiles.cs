@@ -74,6 +74,7 @@ public static class UpdateRuntimeFiles
             "--health-timeout", options.HealthTimeoutSeconds.ToString(),
             "--backup-root", options.BackupRoot,
             "--update-root", options.UpdateRoot,
+            "--language", options.Language,
         };
 
     /// <summary>解析更新器命令行参数。</summary>
@@ -106,6 +107,7 @@ public static class UpdateRuntimeFiles
                 out var timeout) ? Math.Max(timeout, 10) : 60,
             BackupRoot = Get(values, "--backup-root"),
             UpdateRoot = Get(values, "--update-root"),
+            Language = Get(values, "--language"),
         };
     }
 

@@ -1,6 +1,8 @@
+using Otc.Update.Core.Localization;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 
 namespace Otc.Updater;
 
@@ -11,17 +13,29 @@ public partial class MainWindow : Window
     private readonly StringBuilder _log = new();
     private bool _finished;
 
+    /// <summary>
+    /// 当前状态标题与页脚提示使用的词条键。
+    /// </summary>
+    /// <remarks>
+    /// 这两处文本是命令式赋值，会覆盖 XAML 上的绑定；
+    /// 记录键值后，切换语言时重新套用一次即可让界面同步刷新。
+    /// </remarks>
+    private string? _statusKey;
+    private object?[] _statusArgs = Array.Empty<object?>();
+    private string? _footerKey;
+
     /// <summary>初始化更新窗口。</summary>
     public MainWindow(UpdateLaunchOptions? options, string? startupError)
     {
         InitializeComponent();
         _options = options;
+        InitializeLanguageSelector();
 
         if (options is null)
         {
             UpdateContent.Visibility = Visibility.Collapsed;
             EmptyState.Visibility = Visibility.Visible;
-            FooterHintText.Text = startupError ?? "请由主程序启动更新器。";
+            FooterHintText.Text = startupError ?? Loc["Updater.Empty.Hint"];
             CloseButton.IsEnabled = true;
             _finished = true;
             return;
@@ -32,6 +46,82 @@ public partial class MainWindow : Window
         ProductText.Text = $"{options.ProductCode} / {options.ProductType}";
         VersionText.Text = $"{options.FromVersion}  →  {options.ToVersion}";
         Loaded += OnLoaded;
+    }
+
+    /// <summary>本地化服务快捷访问。</summary>
+    private static LocalizationService Loc => LocalizationService.Instance;
+
+    /// <summary>初始化页头语言下拉框。</summary>
+    private void InitializeLanguageSelector()
+    {
+        LanguageBox.ItemsSource = Loc.SupportedLanguages;
+        LanguageBox.DisplayMemberPath = nameof(LanguageOption.DisplayName);
+        LanguageBox.SelectedItem = Loc.SupportedLanguages
+            .FirstOrDefault(option => string.Equals(
+                option.Code,
+                Loc.CurrentLanguage,
+                StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>页头语言切换事件。</summary>
+    /// <remarks>
+    /// 更新过程中的状态文案由本地化服务统一刷新；
+    /// 已写入日志文件的历史行保留切换前的语言，便于现场排查。
+    /// </remarks>
+    private void OnLanguageChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (LanguageBox.SelectedItem is not LanguageOption option)
+        {
+            return;
+        }
+
+        if (Loc.SetLanguage(option.Code))
+        {
+            LanguageBox.SelectedItem = Loc.SupportedLanguages
+                .FirstOrDefault(item => string.Equals(
+                    item.Code,
+                    Loc.CurrentLanguage,
+                    StringComparison.OrdinalIgnoreCase));
+            RefreshLocalizedTexts();
+        }
+    }
+
+    /// <summary>
+    /// 设置状态标题并记录词条键。
+    /// </summary>
+    /// <param name="key">词条键。</param>
+    /// <param name="args">格式化参数。</param>
+    private void SetStatus(string key, params object?[] args)
+    {
+        _statusKey = key;
+        _statusArgs = args;
+        StatusText.Text = args.Length == 0 ? Loc[key] : Loc.Format(key, args);
+    }
+
+    /// <summary>
+    /// 设置页脚提示并记录词条键。
+    /// </summary>
+    /// <param name="key">词条键。</param>
+    private void SetFooterHint(string key)
+    {
+        _footerKey = key;
+        FooterHintText.Text = Loc[key];
+    }
+
+    /// <summary>按当前语言重新套用状态标题与页脚提示。</summary>
+    private void RefreshLocalizedTexts()
+    {
+        if (_statusKey is not null)
+        {
+            StatusText.Text = _statusArgs.Length == 0
+                ? Loc[_statusKey]
+                : Loc.Format(_statusKey, _statusArgs);
+        }
+
+        if (_footerKey is not null)
+        {
+            FooterHintText.Text = Loc[_footerKey];
+        }
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -77,25 +167,38 @@ public partial class MainWindow : Window
             ProgressBar.Value = 100;
             ProgressPercentText.Text = "100%";
             UpdateStages(100, !result.Succeeded);
-            StatusText.Text = result.State switch
+            _statusKey = result.State switch
             {
-                "success" => "更新成功，新版本已通过健康检查。",
-                "rolled_back" => "更新失败，已自动恢复到旧版本。",
-                _ => $"更新失败：{result.Message}",
+                "success" => "Updater.Status.SuccessDetail",
+                "rolled_back" => "Updater.Status.RolledBack",
+                _ => "Updater.Status.Failed",
             };
+            _statusArgs = result.State == "success" || result.State == "rolled_back"
+                ? Array.Empty<object?>()
+                : new object?[] { result.Message };
+            StatusText.Text = _statusArgs.Length == 0
+                ? Loc[_statusKey]
+                : Loc.Format(_statusKey, _statusArgs);
+
             StatusText.Foreground = result.Succeeded
                 ? (System.Windows.Media.Brush)FindResource("SuccessBrush")
                 : (System.Windows.Media.Brush)FindResource("WarningBrush");
             StatusDetailText.Text = result.Message;
-            FooterHintText.Text = result.Succeeded
-                ? "更新已完成，可以关闭此窗口。"
-                : "更新未完成，系统已尝试恢复旧版本。";
+
+            if (result.Succeeded)
+            {
+                SetFooterHint("Updater.Detail.Completed");
+            }
+            else
+            {
+                SetFooterHint("Updater.Detail.NotCompleted");
+            }
         }
         catch (Exception ex)
         {
             _finished = true;
             CloseButton.IsEnabled = true;
-            StatusText.Text = $"更新器异常：{ex.Message}";
+            SetStatus("Updater.Status.Exception", ex.Message);
             StatusText.Foreground = (System.Windows.Media.Brush)FindResource("DangerBrush");
             StatusDetailText.Text = ex.Message;
             LogExpander.IsExpanded = true;

@@ -1,9 +1,27 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <!--
+      目标框架为 net8.0-windows 并启用 WPF：本库同时承载 Publisher 与 Updater 共用的
+      本地化服务与 XAML 标记扩展（LocExtension 需要 System.Xaml / WPF 标记扩展支持）。
+      两个消费方 Otc.Publisher 与 Otc.Updater 本身都是 net8.0-windows 的 WPF 程序，
+      不引入额外部署约束。本库不会被主程序 CC_WPF / WMS_WPF 引用，
+      它们各自保留 Services/Update/Core 下的独立副本。
+    -->
+    <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <AssemblyName>Otc.Update.Core</AssemblyName>
     <RootNamespace>Otc.Update.Core</RootNamespace>
   </PropertyGroup>
+
+  <!--
+    三语词条以嵌入资源方式随程序集发布：Publisher 与 Updater 会被复制到现场目录运行，
+    嵌入资源保证词条与 DLL 同版本，不会出现目录里残留旧 JSON 覆盖新词条的情况。
+    开发期可用环境变量 OTC_UPDATE_LOCALIZATION_DIR 指向外部目录覆盖词条。
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="Localization\Resources\*.json" />
+  </ItemGroup>
 </Project>

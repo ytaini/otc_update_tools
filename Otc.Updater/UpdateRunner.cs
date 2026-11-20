@@ -1,3 +1,4 @@
+using Otc.Update.Core.Localization;
 using System.Diagnostics;
 using System.IO;
 
@@ -22,6 +23,9 @@ public sealed class UpdateProgress
 /// <summary>执行通用更新流程。</summary>
 public static class UpdateRunner
 {
+    /// <summary>本地化服务快捷访问。</summary>
+    private static LocalizationService Loc => LocalizationService.Instance;
+
     /// <summary>执行更新。</summary>
     public static async Task<UpdateResult> RunAsync(
         UpdateLaunchOptions options,
@@ -59,10 +63,10 @@ public static class UpdateRunner
         try
         {
             ValidateOptions(options);
-            Report(5, "等待主程序退出", "Updater started");
+            Report(5, Loc["Updater.Status.WaitExit"], Loc["Updater.Log.Started"]);
             await WaitForParentExitAsync(options.ParentProcessId, cancellationToken);
 
-            Report(20, "验证更新包", "Validating package");
+            Report(20, Loc["Updater.Status.Validate"], Loc["Updater.Log.Validating"]);
             UpdatePackageService.ValidateApprovedPackage(
                 options.PackagePath,
                 options.ProductCode,
@@ -78,17 +82,17 @@ public static class UpdateRunner
                 "work",
                 options.ProductCode,
                 $"{options.ToVersion}-{Guid.NewGuid():N}");
-            Report(35, "解包并校验文件", "Extracting payload");
+            Report(35, Loc["Updater.Status.Extract"], Loc["Updater.Log.Extracting"]);
             UpdatePackageService.ExtractPayload(options.PackagePath, workDirectory);
 
-            Report(50, "备份当前版本", "Creating backup");
+            Report(50, Loc["Updater.Status.Backup"], Loc["Updater.Log.BackingUp"]);
             backupPath = UpdateFileSystem.CreateBackup(
                 options.InstallDirectory,
                 options.BackupRoot,
                 options.ProductCode,
                 options.FromVersion);
 
-            Report(65, "替换程序文件", "Applying payload");
+            Report(65, Loc["Updater.Status.Apply"], Loc["Updater.Log.Applying"]);
             UpdateFileSystem.ApplyPayload(workDirectory, options.InstallDirectory);
 
             var healthPath = UpdateRuntimeFiles.GetHealthFilePath(
@@ -99,10 +103,10 @@ public static class UpdateRunner
                 File.Delete(healthPath);
             }
 
-            Report(75, "启动新版本", "Starting new application");
+            Report(75, Loc["Updater.Status.Start"], Loc["Updater.Log.Starting"]);
             newProcess = StartApplication(options);
 
-            Report(85, "执行健康检查", "Waiting for health marker");
+            Report(85, Loc["Updater.Status.Health"], Loc["Updater.Log.HealthWait"]);
             if (!await WaitForHealthyVersionAsync(
                     newProcess,
                     updateRoot,
@@ -111,7 +115,7 @@ public static class UpdateRunner
                     options.HealthTimeoutSeconds,
                     cancellationToken))
             {
-                throw new InvalidOperationException("新版本未产生有效健康标记");
+                throw new InvalidOperationException(Loc["Updater.Status.HealthMissing"]);
             }
 
             var result = new UpdateResult
@@ -120,18 +124,18 @@ public static class UpdateRunner
                 ProductCode = options.ProductCode,
                 FromVersion = options.FromVersion,
                 ToVersion = options.ToVersion,
-                Message = "新版本已启动并通过健康检查",
+                Message = Loc["Updater.Status.HealthPassed"],
                 BackupPath = backupPath,
                 FinishedAtUtc = DateTime.UtcNow,
             };
             UpdateRuntimeFiles.WriteResult(updateRoot, result);
             UpdateFileSystem.CleanupOldBackups(options.BackupRoot, 3);
-            Report(100, "更新成功", "New version health check passed");
+            Report(100, Loc["Updater.Status.Success"], Loc["Updater.Log.HealthPassed"]);
             return result;
         }
         catch (Exception ex)
         {
-            Report(90, "更新失败，准备回滚", ex.Message, true);
+            Report(90, Loc["Updater.Status.RollbackPreparing"], ex.Message, true);
 
             try
             {
@@ -158,7 +162,13 @@ public static class UpdateRunner
                     FinishedAtUtc = DateTime.UtcNow,
                 };
                 UpdateRuntimeFiles.WriteResult(updateRoot, result);
-                Report(100, result.Succeeded ? "更新成功" : "已自动回滚", ex.Message, true);
+                Report(
+                    100,
+                    result.State == "rolled_back"
+                        ? Loc["Updater.Status.RolledBackShort"]
+                        : Loc["Updater.Status.BothFailed"],
+                    ex.Message,
+                    true);
                 return result;
             }
             catch (Exception rollbackError)
@@ -169,12 +179,12 @@ public static class UpdateRunner
                     ProductCode = options.ProductCode,
                     FromVersion = options.FromVersion,
                     ToVersion = options.ToVersion,
-                    Message = $"更新失败：{ex.Message}；回滚失败：{rollbackError.Message}",
+                    Message = Loc.Format("Updater.Error.RollbackFailed", ex.Message, rollbackError.Message),
                     BackupPath = backupPath ?? string.Empty,
                     FinishedAtUtc = DateTime.UtcNow,
                 };
                 UpdateRuntimeFiles.WriteResult(updateRoot, result);
-                Report(100, "更新和回滚均失败", result.Message, true);
+                Report(100, Loc["Updater.Status.BothFailed"], result.Message, true);
                 return result;
             }
         }
@@ -191,17 +201,19 @@ public static class UpdateRunner
             || string.IsNullOrWhiteSpace(options.PublicKeyPem)
             || string.IsNullOrWhiteSpace(options.BackupRoot))
         {
-            throw new ArgumentException("更新器启动参数不完整");
+            throw new ArgumentException(Loc["Updater.Error.IncompleteArguments"]);
         }
 
         if (!File.Exists(options.PackagePath))
         {
-            throw new FileNotFoundException("更新包不存在", options.PackagePath);
+            throw new FileNotFoundException(Loc["Updater.Error.PackageMissing"], options.PackagePath);
         }
 
         if (!File.Exists(Path.Combine(options.InstallDirectory, options.ApplicationExecutable)))
         {
-            throw new FileNotFoundException("主程序不存在", options.ApplicationExecutable);
+            throw new FileNotFoundException(
+                Loc["Updater.Error.AppMissing"],
+                options.ApplicationExecutable);
         }
     }
 
@@ -213,7 +225,7 @@ public static class UpdateRunner
             FileName = executable,
             WorkingDirectory = options.InstallDirectory,
             UseShellExecute = true,
-        }) ?? throw new InvalidOperationException("无法启动主程序");
+        }) ?? throw new InvalidOperationException(Loc["Updater.Error.StartFailed"]);
     }
 
     private static async Task WaitForParentExitAsync(
@@ -245,7 +257,7 @@ public static class UpdateRunner
 
             if (!process.HasExited)
             {
-                throw new TimeoutException("主程序未在 60 秒内退出");
+                throw new TimeoutException(Loc["Updater.Error.ParentTimeout"]);
             }
         }
 

@@ -1,10 +1,12 @@
 using Microsoft.Win32;
 using Npgsql;
+using Otc.Update.Core;
+using Otc.Update.Core.Localization;
 using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
-using Otc.Update.Core;
+using System.Windows.Controls.Primitives;
 
 namespace Otc.Publisher;
 
@@ -15,18 +17,90 @@ public partial class MainWindow : Window
     private const string DefaultShareDirectory = @"\\192.168.1.6\share";
     private readonly StringBuilder _log = new();
 
+    /// <summary>
+    /// 当前状态栏使用的词条键。
+    /// </summary>
+    /// <remarks>
+    /// 状态栏文本是命令式赋值，会覆盖 XAML 上的绑定；
+    /// 记录键值后，切换语言时重新套用一次即可让状态栏同步刷新。
+    /// </remarks>
+    private string? _statusKey;
+    private object?[] _statusArgs = Array.Empty<object?>();
+
     /// <summary>初始化发布窗口。</summary>
     public MainWindow()
     {
         InitializeComponent();
+        InitializeLanguageSelector();
         ApplyDefaults();
         var restored = ApplySavedSettings();
         UpdateTargetInputs();
         AppendLog(
             restored
-                ? $"已恢复上次保存的发布配置：{PublisherSettingsStore.SettingsPath}"
-                : "已载入通用默认值，请选择产品和待发布目录后再发布。");
+                ? Loc.Format("Publisher.Status.RestoredWithPath", PublisherSettingsStore.SettingsPath)
+                : Loc["Publisher.Status.DefaultsLoaded"]);
         Loaded += OnLoaded;
+    }
+
+    /// <summary>本地化服务快捷访问。</summary>
+    private static LocalizationService Loc => LocalizationService.Instance;
+
+    /// <summary>初始化页头语言下拉框。</summary>
+    private void InitializeLanguageSelector()
+    {
+        LanguageBox.ItemsSource = Loc.SupportedLanguages;
+        LanguageBox.DisplayMemberPath = nameof(LanguageOption.DisplayName);
+        LanguageBox.SelectedItem = Loc.SupportedLanguages
+            .FirstOrDefault(option => string.Equals(
+                option.Code,
+                Loc.CurrentLanguage,
+                StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>页头语言切换事件。</summary>
+    private void OnLanguageChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (LanguageBox.SelectedItem is not LanguageOption option)
+        {
+            return;
+        }
+
+        if (Loc.SetLanguage(option.Code))
+        {
+            // 词条绑定由本地化服务统一刷新；此处同步当前选中项、状态栏与落盘的语言偏好。
+            LanguageBox.SelectedItem = Loc.SupportedLanguages
+                .FirstOrDefault(item => string.Equals(
+                    item.Code,
+                    Loc.CurrentLanguage,
+                    StringComparison.OrdinalIgnoreCase));
+            RefreshStatusText();
+            SaveLanguagePreference();
+        }
+    }
+
+    /// <summary>
+    /// 设置状态栏文本并记录词条键。
+    /// </summary>
+    /// <param name="key">词条键。</param>
+    /// <param name="args">格式化参数。</param>
+    private void SetStatus(string key, params object?[] args)
+    {
+        _statusKey = key;
+        _statusArgs = args;
+        StatusText.Text = args.Length == 0 ? Loc[key] : Loc.Format(key, args);
+    }
+
+    /// <summary>按当前语言重新套用状态栏文本。</summary>
+    private void RefreshStatusText()
+    {
+        if (_statusKey is null)
+        {
+            return;
+        }
+
+        StatusText.Text = _statusArgs.Length == 0
+            ? Loc[_statusKey]
+            : Loc.Format(_statusKey, _statusArgs);
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -70,8 +144,8 @@ public partial class MainWindow : Window
         TargetValueBox.Text = string.Empty;
         RolloutPercentBox.Text = "100";
         MandatoryBox.IsChecked = false;
-        RemarkBox.Text = "常规版本发布";
-        StatusText.Text = "默认参数已预填，请确认后开始发布";
+        RemarkBox.Text = Loc["Publisher.Default.Remark"];
+        SetStatus("Publisher.Status.DefaultsReady");
     }
 
     private bool ApplySavedSettings()
@@ -99,7 +173,7 @@ public partial class MainWindow : Window
         RolloutPercentBox.Text = settings.RolloutPercent;
         MandatoryBox.IsChecked = settings.Mandatory;
         RemarkBox.Text = settings.Remark;
-        StatusText.Text = "已恢复上次保存的发布配置";
+        SetStatus("Publisher.Status.Restored");
         return true;
     }
 
@@ -120,7 +194,7 @@ public partial class MainWindow : Window
         var dialog = new OpenFileDialog
         {
             Filter = "PEM key (*.pem)|*.pem|All files (*.*)|*.*",
-            Title = "选择签名私钥",
+            Title = Loc["Publisher.Dialog.SelectPrivateKey"],
         };
         var current = PrivateKeyBox.Text.Trim();
         if (File.Exists(current))
@@ -146,7 +220,7 @@ public partial class MainWindow : Window
                 FileName = string.IsNullOrWhiteSpace(current)
                     ? "update-private.pem"
                     : Path.GetFileName(current),
-                Title = "保存签名私钥",
+                Title = Loc["Publisher.Dialog.SavePrivateKey"],
             };
 
             if (!string.IsNullOrWhiteSpace(current))
@@ -165,28 +239,28 @@ public partial class MainWindow : Window
 
             PublisherEngine.GenerateKeys(dialog.FileName, publicPath);
             PrivateKeyBox.Text = dialog.FileName;
-            AppendLog($"私钥：{dialog.FileName}");
-            AppendLog($"公钥：{publicPath}");
-            StatusText.Text = "签名密钥已生成";
+            AppendLog(Loc.Format("Publisher.Log.PrivateKey", dialog.FileName));
+            AppendLog(Loc.Format("Publisher.Log.PublicKey", publicPath));
+            SetStatus("Publisher.Status.KeysGenerated");
             StatusText.Foreground = (System.Windows.Media.Brush)FindResource("SuccessBrush");
             LogExpander.IsExpanded = true;
             MessageBox.Show(
                 this,
-                $"密钥已生成。\n\n私钥：{dialog.FileName}\n公钥：{publicPath}",
-                "生成成功",
+                Loc.Format("Publisher.Message.KeysGenerated", dialog.FileName, publicPath),
+                Loc["Publisher.Dialog.KeysGenerated"],
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            StatusText.Text = "生成签名密钥失败";
+            SetStatus("Publisher.Status.KeysFailed");
             StatusText.Foreground = (System.Windows.Media.Brush)FindResource("DangerBrush");
             AppendLog(ex.Message);
             LogExpander.IsExpanded = true;
             MessageBox.Show(
                 this,
                 ex.Message,
-                "生成失败",
+                Loc["Publisher.Dialog.KeysFailed"],
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -200,40 +274,43 @@ public partial class MainWindow : Window
             GenerateKeyButton.IsEnabled = false;
             ProgressBar.IsIndeterminate = true;
             ProgressBar.Value = 0;
-            StatusText.Text = "正在生成并发布更新包...";
+            SetStatus("Publisher.Status.Publishing");
             StatusText.Foreground = (System.Windows.Media.Brush)FindResource("AccentBrush");
 
             var options = BuildOptions();
-            AppendLog(
-                $"开始发布 {options.ProductCode} {options.Version}，范围 {options.TargetType}。");
+            AppendLog(Loc.Format(
+                "Publisher.Log.Start",
+                options.ProductCode,
+                options.Version,
+                options.TargetType));
             var result = await PublisherEngine.PublishAsync(
                 options,
                 message => Dispatcher.BeginInvoke(() => AppendLog(message)));
 
             ProgressBar.IsIndeterminate = false;
             ProgressBar.Value = 100;
-            StatusText.Text = "发布成功，版本记录已写入数据库";
+            SetStatus("Publisher.Status.Success");
             StatusText.Foreground = (System.Windows.Media.Brush)FindResource("SuccessBrush");
-            AppendLog($"发布完成：{result.PackagePath}");
-            AppendLog($"SHA-256：{result.Sha256}");
+            AppendLog(Loc.Format("Publisher.Log.Completed", result.PackagePath));
+            AppendLog(Loc.Format("Publisher.Log.Sha256", result.Sha256));
             MessageBox.Show(
                 this,
-                $"发布成功。\n\n{result.PackagePath}",
-                "发布成功",
+                result.PackagePath,
+                Loc["Publisher.Dialog.PublishSuccess"],
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
             ProgressBar.IsIndeterminate = false;
-            StatusText.Text = "发布失败，请展开日志查看原因";
+            SetStatus("Publisher.Status.Failed");
             StatusText.Foreground = (System.Windows.Media.Brush)FindResource("DangerBrush");
             AppendLog(ex.Message);
             LogExpander.IsExpanded = true;
             MessageBox.Show(
                 this,
                 ex.Message,
-                "发布失败",
+                Loc["Publisher.Dialog.PublishFailed"],
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -249,7 +326,7 @@ public partial class MainWindow : Window
         if (!int.TryParse(PortBox.Text, out var port)
             || !int.TryParse(RolloutPercentBox.Text, out var rollout))
         {
-            throw new FormatException("端口和灰度百分比必须是整数");
+            throw new FormatException(Loc["Publisher.Error.PortAndRollout"]);
         }
 
         var connection = new NpgsqlConnectionStringBuilder
@@ -271,7 +348,7 @@ public partial class MainWindow : Window
         if ((targetType == UpdateTargetTypes.Device || targetType == UpdateTargetTypes.Workshop)
             && string.IsNullOrWhiteSpace(targetValue))
         {
-            throw new InvalidOperationException("按设备或车间发布时必须填写目标值");
+            throw new InvalidOperationException(Loc["Publisher.Error.TargetValueRequired"]);
         }
 
         return new PublisherOptions
@@ -309,6 +386,26 @@ public partial class MainWindow : Window
         RolloutPercentBox.IsEnabled = needsRollout;
     }
 
+    /// <summary>
+    /// 把当前语言偏好写到本机文件。
+    /// </summary>
+    /// <remarks>
+    /// 语言偏好单独存放，不影响发布配置；写入失败不打断当前会话的语言切换。
+    /// </remarks>
+    private void SaveLanguagePreference()
+    {
+        try
+        {
+            PublisherSettingsStore.SaveLanguage(Loc.CurrentLanguage);
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+    }
+
     private void SaveCurrentSettings()
     {
         var targetType = (TargetTypeBox.SelectedItem as ComboBoxItem)
@@ -338,7 +435,7 @@ public partial class MainWindow : Window
     {
         var dialog = new OpenFolderDialog
         {
-            Title = "选择目录",
+            Title = Loc["Publisher.Dialog.SelectFolder"],
         };
 
         if (Directory.Exists(target.Text))

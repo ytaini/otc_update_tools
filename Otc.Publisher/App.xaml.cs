@@ -1,5 +1,6 @@
 using System.Windows;
 using System.IO;
+using Otc.Update.Core.Localization;
 
 namespace Otc.Publisher;
 
@@ -30,6 +31,9 @@ public partial class App : Application
         if (e.Args.Length > 0)
         {
             var options = PublisherCommandLine.Parse(e.Args);
+
+            // 命令行模式优先按 --language 切换界面语言，未指定时沿用系统语言。
+            ApplyCommandLineLanguage(options?.Language);
 
             if (options is null)
             {
@@ -63,8 +67,39 @@ public partial class App : Application
         }
 
         ShutdownMode = ShutdownMode.OnMainWindowClose;
+
+        // 图形界面模式：优先恢复本机保存的语言偏好，未保存时沿用系统语言。
+        ApplySavedLanguage();
+
         var window = new MainWindow();
         MainWindow = window;
         window.Show();
+    }
+
+    /// <summary>
+    /// 按命令行参数或环境变量切换界面语言。
+    /// </summary>
+    /// <param name="language">命令行 <c>--language</c> 取值，可为空。</param>
+    private static void ApplyCommandLineLanguage(string? language)
+    {
+        var resolved = !string.IsNullOrWhiteSpace(language)
+            ? language
+            : Environment.GetEnvironmentVariable("OTC_PUBLISHER_LANGUAGE");
+
+        if (!string.IsNullOrWhiteSpace(resolved))
+        {
+            LocalizationService.Instance.SetLanguage(resolved);
+        }
+    }
+
+    /// <summary>恢复本机保存的语言偏好。</summary>
+    private static void ApplySavedLanguage()
+    {
+        var saved = PublisherSettingsStore.LoadLanguage();
+
+        if (!string.IsNullOrWhiteSpace(saved))
+        {
+            LocalizationService.Instance.SetLanguage(saved);
+        }
     }
 }

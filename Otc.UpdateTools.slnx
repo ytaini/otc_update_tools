@@ -2,4 +2,5 @@
   <Project Path="Otc.Update.Core\Otc.Update.Core.csproj" />
   <Project Path="Otc.Publisher\Otc.Publisher.csproj" />
   <Project Path="Otc.Updater\Otc.Updater.csproj" />
+  <Project Path="Otc.UpdateTools.SelfCheck\Otc.UpdateTools.SelfCheck.csproj" />
 </Solution>

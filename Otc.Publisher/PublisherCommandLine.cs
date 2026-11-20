@@ -1,3 +1,5 @@
+using Otc.Update.Core.Localization;
+
 namespace Otc.Publisher;
 
 /// <summary>Publisher 命令行兼容模式。</summary>
@@ -55,27 +57,12 @@ public static class PublisherCommandLine
                 : 100,
             Mandatory = bool.TryParse(Get(map, "--mandatory"), out var mandatory) && mandatory,
             Remark = Get(map, "--remark"),
+            Language = Get(map, "--language"),
         };
     }
 
     /// <summary>输出命令行帮助。</summary>
-    public static string Usage =>
-        """
-        Otc.Publisher
-          --source <published-directory>
-          --updater-dir <updater-output-directory>
-          --product <product-code>
-          --type <WCS|WMS|WCM>
-          --version <version>
-          --share <UNC-root-or-publish-directory>
-          --connection <postgres-connection> | env OTC_UPDATE_DB_CONNECTION
-          --private-key <private.pem>
-          --target-type all|device|workshop|rollout
-          --target-value <machine-or-workshop>
-          --rollout-percent 10
-          --mandatory false
-          --remark "release notes"
-        """;
+    public static string Usage => LocalizationService.Instance["Publisher.Cli.Usage"];
 
     private static string Get(IReadOnlyDictionary<string, string> map, string key)
         => map.TryGetValue(key, out var value) ? value.Trim() : string.Empty;

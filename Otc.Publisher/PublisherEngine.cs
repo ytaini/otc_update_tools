@@ -1,4 +1,5 @@
 using Npgsql;
+using Otc.Update.Core.Localization;
 using System.IO;
 
 namespace Otc.Publisher;
@@ -6,6 +7,9 @@ namespace Otc.Publisher;
 /// <summary>通用更新包发布引擎。</summary>
 public static class PublisherEngine
 {
+    /// <summary>本地化服务快捷访问。</summary>
+    private static LocalizationService Loc => LocalizationService.Instance;
+
     /// <summary>生成 RSA 密钥对。</summary>
     public static void GenerateKeys(string privateKeyPath, string publicKeyPath)
     {
@@ -34,16 +38,16 @@ public static class PublisherEngine
 
         try
         {
-            log?.Invoke("整理发布文件");
+            log?.Invoke(Loc["Publisher.Log.PrepareFiles"]);
             CopyPublishedFiles(options.SourceDirectory, filteredSource);
 
             if (!string.IsNullOrWhiteSpace(options.UpdaterDirectory))
             {
-                log?.Invoke("加入通用 Updater");
+                log?.Invoke(Loc["Publisher.Log.AddUpdater"]);
                 CopyDirectory(options.UpdaterDirectory, Path.Combine(filteredSource, "Updater"));
             }
 
-            log?.Invoke("生成并签名更新包");
+            log?.Invoke(Loc["Publisher.Log.BuildPackage"]);
             var manifest = UpdatePackageService.BuildPackage(
                 filteredSource,
                 options.ProductCode,
@@ -63,9 +67,9 @@ public static class PublisherEngine
             var remotePath = Path.Combine(options.ShareDirectory, relativePath);
             Directory.CreateDirectory(Path.GetDirectoryName(remotePath)!);
             File.Copy(packagePath, remotePath, true);
-            log?.Invoke($"更新包已复制到 {remotePath}");
+            log?.Invoke(Loc.Format("Publisher.Log.CopyPackage", remotePath));
 
-            log?.Invoke("写入数据库发布记录");
+            log?.Invoke(Loc["Publisher.Log.WriteDatabase"]);
             await WriteDatabaseAsync(
                 options,
                 relativePath,
@@ -167,7 +171,7 @@ public static class PublisherEngine
 
         if (!File.Exists(options.PrivateKeyPath))
         {
-            throw new FileNotFoundException("签名私钥不存在", options.PrivateKeyPath);
+            throw new FileNotFoundException(Loc["Publisher.Error.PrivateKeyMissing"], options.PrivateKeyPath);
         }
 
         if (string.IsNullOrWhiteSpace(options.ProductCode)
@@ -176,7 +180,7 @@ public static class PublisherEngine
             || string.IsNullOrWhiteSpace(options.ShareDirectory)
             || string.IsNullOrWhiteSpace(options.ConnectionString))
         {
-            throw new ArgumentException("发布参数不完整");
+            throw new ArgumentException(Loc["Publisher.Error.IncompleteOptions"]);
         }
     }
 
