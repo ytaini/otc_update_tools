@@ -19,22 +19,23 @@
         <CornerRadius x:Key="ControlCornerRadius">3</CornerRadius>
         <CornerRadius x:Key="CircleCornerRadius">999</CornerRadius>
 
+        <!--
+          页头语言下拉框。默认 Aero2 模板会把下拉框画成不透明的浅色底，
+          若前景色沿用页头的白色就会出现白底白字、看不清；
+          这里显式使用白底 + 深色前景 + 浅色边框，与窗口内其它输入控件保持一致，
+          展开的列表项同样用深色前景，保证浅色弹出层上可读。
+        -->
         <Style x:Key="HeaderComboBoxStyle" TargetType="ComboBox">
             <Setter Property="Height" Value="32" />
             <Setter Property="Padding" Value="9,0" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="Background" Value="#22FFFFFF" />
-            <Setter Property="BorderBrush" Value="#44FFFFFF" />
+            <Setter Property="Foreground" Value="#172033" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#CBD5E1" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Cursor" Value="Hand" />
-            <!--
-              页头在深色背景上，闭合状态的文字必须是白色；
-              但展开的列表项默认继承 ComboBox 的白色前景色，在浅色弹出层上会看不清。
-              这里显式给列表项设定深色前景与不透明背景，保证下拉列表可读。
-            -->
             <Setter Property="ItemContainerStyle">
                 <Setter.Value>
                     <Style TargetType="ComboBoxItem">
