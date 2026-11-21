@@ -4,7 +4,7 @@
       目标框架为 net8.0-windows 并启用 WPF：本库同时承载 Publisher 与 Updater 共用的
       本地化服务与 XAML 标记扩展（LocExtension 需要 System.Xaml / WPF 标记扩展支持）。
       两个消费方 Otc.Publisher 与 Otc.Updater 本身都是 net8.0-windows 的 WPF 程序，
-      不引入额外部署约束。本库不会被主程序 CC_WPF / WMS_WPF 引用，
+      不引入额外部署约束。本库不会被主程序 WCS_WPF / WMS_WPF 引用，
       它们各自保留 Services/Update/Core 下的独立副本。
     -->
     <TargetFramework>net8.0-windows</TargetFramework>

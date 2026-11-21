@@ -55,7 +55,7 @@ public sealed class UpdatePackageManifest
     /// <summary>清单协议版本。</summary>
     public int SchemaVersion { get; set; } = UpdateConstants.SchemaVersion;
 
-    /// <summary>产品编码，例如 CC_WPF / WMS_WPF。</summary>
+    /// <summary>产品编码，例如 WCS_WPF / WMS_WPF。</summary>
     public string Product { get; set; } = string.Empty;
 
     /// <summary>产品类型，例如 WCS / WMS。</summary>

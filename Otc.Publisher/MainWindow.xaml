@@ -150,7 +150,7 @@
                                 <ComboBox x:Name="ProductCodeBox"
                                           IsEditable="True"
                                           Style="{StaticResource InputComboBoxStyle}">
-                                    <ComboBoxItem Content="CC_WPF" />
+                                    <ComboBoxItem Content="WCS_WPF" />
                                     <ComboBoxItem Content="WMS_WPF" />
                                 </ComboBox>
                             </StackPanel>

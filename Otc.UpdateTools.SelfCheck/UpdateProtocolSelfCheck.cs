@@ -31,13 +31,13 @@ internal static class UpdateProtocolSelfCheck
         {
             var options = new UpdateLaunchOptions
             {
-                ProductCode = "CC_WPF",
+                ProductCode = "WCS_WPF",
                 ProductType = "WCS",
                 FromVersion = "1.0.1",
                 ToVersion = "1.0.2",
-                PackagePath = @"C:\Temp\CC_WPF_1.0.2.otcupdate",
-                InstallDirectory = @"C:\Program Files\OTC\CC_WPF",
-                ApplicationExecutable = "CC_WPF.exe",
+                PackagePath = @"C:\Temp\WCS_WPF_1.0.2.otcupdate",
+                InstallDirectory = @"C:\Program Files\OTC\WCS_WPF",
+                ApplicationExecutable = "WCS_WPF.exe",
                 ParentProcessId = 1234,
                 PackageSha256 = new string('a', 64),
                 PackageSize = 1024,
@@ -83,7 +83,7 @@ internal static class UpdateProtocolSelfCheck
         {
             "--source", @"C:\Publish\app",
             "--updater-dir", @"C:\Publish\updater",
-            "--product", "CC_WPF",
+            "--product", "WCS_WPF",
             "--type", "WCS",
             "--version", "1.0.2",
             "--share", @"\\fileserver\OTC_Updates",

@@ -7,7 +7,7 @@ OTC 系列软件共用的更新基础设施，包含：
 - `Otc.Updater`：独立更新器，由目标程序带参数启动，不依赖具体产品程序集。
 - `Otc.UpdateTools.SelfCheck`：独立自检控制台程序，守护三语词条一致性与更新参数协议。
 
-CC_WPF 与 WMS_WPF 通过 Git 子模块引用本仓库，不再保存 Publisher、Updater 或 Update Core 的副本。
+WCS_WPF 与 WMS_WPF 各自保留客户端更新核心源码副本；本仓库独立维护 Publisher、Updater、三语词条与更新协议自检，部署时按发布流程提供对应工具。
 
 ## 构建
 
@@ -20,6 +20,8 @@ dotnet build Otc.UpdateTools.slnx --no-incremental
 ```powershell
 dotnet run --project Otc.UpdateTools.SelfCheck
 ```
+
+当前基线：**166 项通过、0 项失败**。
 
 自检覆盖：三语词条键集合一致、无漏译、XAML 与源码引用的词条键全部存在、
 语言切换与区域文化同步、更新器启动参数携带语言并原样解析回传、
@@ -78,7 +80,7 @@ dotnet run --project Otc.Publisher -- `
   --language <zh-CN|en-US|ko-KR>
 ```
 
-`Otc.Publisher` 与 `Otc.Updater` 不再包含任何针对 CC_WPF 或 WMS_WPF 的分支代码。
+`Otc.Publisher` 与 `Otc.Updater` 不再包含任何针对 WCS_WPF 或 WMS_WPF 的分支代码。
 
 手工启动 Publisher 图形界面时，首次默认值可分别通过
 `OTC_PUBLISHER_PRODUCT` 与 `OTC_PUBLISHER_TYPE` 环境变量提供；命令行模式则始终以
@@ -89,7 +91,7 @@ dotnet run --project Otc.Publisher -- `
 
 ## 与主程序的联动
 
-主程序（CC_WPF / WMS_WPF）启动更新器时，通过 `UpdateLaunchOptions.Language`
+主程序（WCS_WPF / WMS_WPF）启动更新器时，通过 `UpdateLaunchOptions.Language`
 把当前界面语言带给更新器，更新窗口因此与主程序保持同一语言。
 主程序侧的同名协议位于各自的 `Services/Update/Core` 独立副本，
 改动更新参数协议时三处需要同步。
